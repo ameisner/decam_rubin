@@ -109,9 +109,17 @@ def get_ccd_corners_radec():
     # in combination with the CCD corners table
     pass
 
-def get_brick_corners_radec():
-    # this will use the brick WCS template
-    pass
+def get_brick_corners_radec(decam_pointing_ra, decam_pointing_dec):
+    # this will use the brick WCS
+
+    w = brick_wcs(decam_pointing_ra, decam_pointing_dec)
+
+    x_corner = [0, 0, 3600, 3600]
+    y_corner = [0, 3600, 3600, 0]
+
+    ra, dec = w.all_pix2world(x_corner, y_corner, 0)
+
+    return ra, dec
 
 def check_poly_overlaps():
     pass
