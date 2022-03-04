@@ -39,9 +39,17 @@ def load_brick_wcs_template():
 
 @lru_cache(maxsize=1)
 def load_decam_wcs_template():
-    # env variable called DECAM_META
-    
-    pass
+    # would be better to use a pickle file for this
+    fname = os.path.join(os.environ['DECAM_META'],
+                         'decam_wcs_template-header.fits.gz')
+
+    print('READING ' + fname)
+
+    assert(os.path.exists(fname))
+
+    h = fits.getheader(fname)
+
+    return h
 
 @lru_cache(maxsize=2)
 def load_bricklist(region='south'):
@@ -73,10 +81,19 @@ def brick_wcs(ra_decam_pointing, dec_decam_pointing):
 
     return w
 
-def decam_wcs():
+def decam_wcs(ra_decam_pointing, dec_decam_pointing):
     # use DECam tangent plane WCS template to make an appropriately
     # centered DECam tangent plane WCS object
-    pass
+    # does this WCS template run into problems for beyond the pole observing?
+
+    h = load_decam_wcs_template()
+
+    h['CRVAL1'] = ra_decam_pointing
+    h['CRVAL2'] = dec_decam_pointing
+
+    w = wcs.WCS(h)
+
+    return w
 
 def get_ccd_corners_radec():
     # this will use the DECam tangent plane WCS object
