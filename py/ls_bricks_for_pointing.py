@@ -8,25 +8,25 @@ import fitsio
 import astropy.io.fits as fits
 import os
 from functools import lru_cache
+from astropy import wcs
 
-# lru_cache here eventually
 @lru_cache(maxsize=1)
 def load_ccd_corners():
     pass
 
 @lru_cache(maxsize=1)
 def load_brick_wcs_template():
-    # env variable called DECAM_META
-
-    fname = os.path.join(os.environ['DECAM_META'], 'brick_wcs_template.fits')
+    # would be better to use a pickle file for this
+    fname = os.path.join(os.environ['DECAM_META'],
+                         'brick_wcs_template-header.fits.gz')
 
     print('READING ' + fname)
 
     assert(os.path.exists(fname))
 
-    result = fits.getdata(fname)
+    h = fits.getheader(fname)
 
-    return result
+    return h
 
 @lru_cache(maxsize=1)
 def load_decam_wcs_template():
@@ -51,12 +51,20 @@ def load_bricklist(region='south'):
     
     pass
 
-def brick_wcs_instance():
+def brick_wcs(ra_decam_pointing, dec_decam_pointing):
     # use brick WCS template to make an appropriately
     # centered brick WCS object
-    pass
 
-def decam_wcs_instance():
+    h = load_brick_wcs_template()
+
+    h['CRVAL1'] = ra_decam_pointing
+    h['CRVAL2'] = dec_decam_pointing
+
+    w = wcs.WCS(h)
+
+    return w
+
+def decam_wcs():
     # use DECam tangent plane WCS template to make an appropriately
     # centered DECam tangent plane WCS object
     pass
@@ -73,7 +81,7 @@ def get_brick_corners_radec():
 def check_poly_overlaps():
     pass
 
-def get_sky_region(decam_pointing_dec):
+def get_region_name(decam_pointing_dec):
     # subtleties of Dec boundary still need to be addressed
     # decam_pointing_dec should be in degrees
 
