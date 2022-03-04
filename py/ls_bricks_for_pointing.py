@@ -57,16 +57,25 @@ def load_bricklist(region='south'):
     # data release directory location
     # call this $LS_ROOT
 
-    # file names that I want:
+    # file names:
     # $LS_ROOT/north/survey-bricks-dr9-north.fits.gz
     # $LS_ROOT/south/survey-bricks-dr9-south.fits.gz
 
     # sort by Dec here for binary search later
 
-    # https://docs.astropy.org/en/stable/table/modify_table.html
-    # https://numpy.org/doc/stable/reference/generated/numpy.recarray.sort.html
-    
-    pass
+    assert(region in ['north', 'south'])
+
+    fname = os.path.join(os.environ['LS_ROOT'], region,
+                         'survey-bricks-dr9-' + region + '.fits.gz')
+
+    print('READING ' + fname)
+    assert(os.path.exists(fname))
+
+    tab = fits.getdata(fname)
+
+    tab.sort(order='dec')
+
+    return tab
 
 def brick_wcs(ra_decam_pointing, dec_decam_pointing):
     # use brick WCS template to make an appropriately
