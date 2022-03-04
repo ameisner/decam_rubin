@@ -12,7 +12,16 @@ from astropy import wcs
 
 @lru_cache(maxsize=1)
 def load_ccd_corners():
-    pass
+    fname = os.path.join(os.environ['DECAM_META'],
+                         'cornerCoords_SN-C1-reordered-TAN.fits')
+
+    print('READING ' + fname)
+
+    assert(os.path.exists(fname))
+
+    tab = fits.getdata(fname)
+
+    return tab
 
 @lru_cache(maxsize=1)
 def load_brick_wcs_template():
