@@ -9,6 +9,9 @@ import astropy.io.fits as fits
 import os
 from functools import lru_cache
 from astropy import wcs
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+import matplotlib.pyplot as plt
 
 @lru_cache(maxsize=1)
 def load_ccd_corners():
@@ -126,6 +129,7 @@ def get_ccd_corners_radec(ra_decam_pointing, dec_decam_pointing, ccdnum=None):
 
 def get_brick_corners_radec(racen, deccen):
     # this will use the brick WCS
+    # racen, deccen here are the central coords of the *brick*
 
     w = brick_wcs(racen, deccen)
 
@@ -136,8 +140,89 @@ def get_brick_corners_radec(racen, deccen):
 
     return ra, dec
 
-def check_poly_overlaps():
-    pass
+def trimmed_brick_list_1ccd(ra_corners, dec_corners, region='south'):
+
+    # load full list
+    #    trim first by dec range (binary search) then by ang sep
+
+    rect_ccd = SphericalPolygon.from_radec(ra_corners, dec_corners)
+
+    bricks = load_bricklist(region=region)
+
+    dec_max = np.max(dec_corners)
+    dec_min = np.min(dec_corners)
+    
+    inds = np.searchsorted(bricks['DEC'], [dec_min - 0.5, dec_max + 0.5])
+
+    print(len(bricks))
+
+    bricks = bricks[inds[0]:inds[1]]
+
+    if len(bricks) == 0:
+        return None
+
+    thresh_deg = 0.5
+
+    sc_ccd = SkyCoord(ra=ra_corners[0]*u.degree, dec=dec_corners[0]*u.degree)
+
+    sc_bricks = SkyCoord(ra=bricks['RA']*u.degree, dec=bricks['DEC']*u.degree)
+
+    ang_sep = sc_ccd.separation(sc_bricks)
+
+    bricks = bricks[ang_sep.deg < thresh_deg]
+
+    if len(bricks) == 0:
+        return None
+
+    keep = np.zeros(len(bricks), dtype=bool)
+    for i, brick in enumerate(bricks):
+        # get ra, dec of brick corners
+        ra_brick, dec_brick = get_brick_corners_radec(brick['RA'],
+                                                      brick['DEC'])
+
+        # check polygon intersection
+        rect_brick = SphericalPolygon.from_radec(ra_brick, dec_brick)
+        keep[i] = rect_brick.intersects_poly(rect_ccd)
+
+    bricks = bricks[keep]
+    
+    return bricks if len(bricks) > 0 else None
+
+def check_poly_overlaps_1ccd(ra_decam_pointing, dec_decam_pointing,
+                             ccdnum, region='south', checkplot=True):
+    # ccdnum is required?
+
+    # get the ra, dec of CCD corners
+    # create a polygon for the CCD
+    # get the ra, dec of brick corners (for many bricks)
+    #    this involves loading a trimmed version of the brick list
+    #    trim first by dec range (binary search) then by ang sep
+    
+    # create a polygon for each brick
+    # check their overlaps
+
+    tab = get_ccd_corners_radec(ra_decam_pointing, dec_decam_pointing,
+                                ccdnum=ccdnum)
+
+    bricks = trimmed_brick_list_1ccd(tab['corner_ra'],
+                                     tab['corner_dec'])
+
+    if checkplot:
+        # guess this will have problems near ra = 0 = 360 ...
+        plt.plot(tab['corner_ra'], tab['corner_dec'], c='k')
+        #plt.scatter(bricks['RA'], bricks['DEC'], s=20, edgecolor='none')
+        for brick in bricks:
+            ra_c, dec_c = get_brick_corners_radec(brick['RA'], brick['DEC'])
+            plt.plot(ra_c, dec_c)
+
+        plt.xlabel('RA (deg)')
+        plt.ylabel('Dec (deg)')
+
+        plt.gca().invert_xaxis()
+        plt.show()
+                  
+    
+    return bricks
 
 def get_region_name(decam_pointing_dec):
     # subtleties of Dec boundary still need to be addressed
