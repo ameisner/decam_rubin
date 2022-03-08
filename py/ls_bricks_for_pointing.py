@@ -77,14 +77,14 @@ def load_bricklist(region='south'):
 
     return tab
 
-def brick_wcs(ra_decam_pointing, dec_decam_pointing):
+def brick_wcs(racen, deccen):
     # use brick WCS template to make an appropriately
     # centered brick WCS object
 
     h = load_brick_wcs_template()
 
-    h['CRVAL1'] = ra_decam_pointing
-    h['CRVAL2'] = dec_decam_pointing
+    h['CRVAL1'] = racen
+    h['CRVAL2'] = deccen
 
     w = wcs.WCS(h)
 
@@ -104,15 +104,30 @@ def decam_wcs(ra_decam_pointing, dec_decam_pointing):
 
     return w
 
-def get_ccd_corners_radec():
+def get_ccd_corners_radec(ra_decam_pointing, dec_decam_pointing, ccdnum=None):
     # this will use the DECam tangent plane WCS object
     # in combination with the CCD corners table
-    pass
 
-def get_brick_corners_radec(decam_pointing_ra, decam_pointing_dec):
+    tab = load_ccd_corners()
+    if ccdnum is not None:
+        tab = tab[tab['CCD'] == ccdnum]
+
+    tab = Table(tab)
+
+    w = decam_wcs(ra_decam_pointing, dec_decam_pointing)
+
+    corner_ra, corner_dec = w.all_pix2world(tab['X_TANGENT_PLANE'],
+                                            tab['Y_TANGENT_PLANE'], 0)
+
+    tab['corner_ra'] = corner_ra
+    tab['corner_dec'] = corner_dec
+
+    return tab
+
+def get_brick_corners_radec(racen, deccen):
     # this will use the brick WCS
 
-    w = brick_wcs(decam_pointing_ra, decam_pointing_dec)
+    w = brick_wcs(racen, deccen)
 
     x_corner = [0, 0, 3600, 3600]
     y_corner = [0, 3600, 3600, 0]
@@ -136,7 +151,7 @@ def get_region_name(decam_pointing_dec):
 
     return region
 
-def get_nearby_bricklist(decam_pointing_ra, decam_pointing_dec):
+def get_nearby_bricklist(decam_pointing_ra, decam_pointing_dec, ccdnum=1):
     # decam_pointing_ra, decam_pointing_dec should be in degrees
     # figure out relevant sky region (north or south)
     # probably some subtleties right at the boundary, worry about those later..
